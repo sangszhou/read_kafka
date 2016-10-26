@@ -122,9 +122,11 @@ class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: String, br
     def newThread(runnable: Runnable): Thread =
       Utils.newThread("executor-" + purgatoryName, runnable, false)
   })
+
   private[this] val timeoutTimer = new Timer(executor)
 
   /* a list of operation watching keys */
+  // key, watcher 的映射关系
   private val watchersForKey = new Pool[Any, Watchers](Some((key: Any) => new Watchers(key)))
 
   private val removeWatchersLock = new ReentrantReadWriteLock()
@@ -143,7 +145,9 @@ class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: String, br
     * Note that a delayed operation can be watched on multiple keys. It is possible that
     * an operation is completed after it has been added to the watch list for some, but
     * not all of the keys. In this case, the operation is considered completed and won't
-    * be added to the watch list of the remaining keys. The expiration reaper thread will
+    * be added to the watch list of the remaining keys.
+    *
+    * The expiration reaper thread will
     * remove this operation from any watcher list in which the operation exists.
     *
     * @param operation the delayed operation to be checked
@@ -164,14 +168,17 @@ class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: String, br
     // expire reaper will clean it up periodically.
 
     var isCompletedByMe = operation synchronized operation.tryComplete()
+
     if (isCompletedByMe)
       return true
 
     var watchCreated = false
+
     for (key <- watchKeys) {
       // If the operation is already completed, stop adding it to the rest of the watcher list.
       if (operation.isCompleted())
         return false
+
       watchForOperation(key, operation)
 
       if (!watchCreated) {
@@ -181,13 +188,14 @@ class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: String, br
     }
 
     isCompletedByMe = operation synchronized operation.tryComplete()
-    if (isCompletedByMe)
-      return true
+
+    if (isCompletedByMe) return true
 
     // if it cannot be completed by now and hence is watched, add to the expire queue also
     if (!operation.isCompleted()) {
       timeoutTimer.add(operation)
       if (operation.isCompleted()) {
+
         // cancel the timer task
         operation.cancel()
       }
@@ -235,6 +243,7 @@ class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: String, br
   /*
    * Return the watch list of the given key, note that we need to
    * grab the removeWatchersLock to avoid the operation being added to a removed watcher list
+   * watcher 和 operation 以及 key 的关系都保存在这里了
    */
   private def watchForOperation(key: Any, operation: T) {
     inReadLock(removeWatchersLock) {
@@ -282,9 +291,11 @@ class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: String, br
     }
 
     // traverse the list and try to complete some watched elements
+    // complete 就是删除的意思
     def tryCompleteWatched(): Int = {
 
       var completed = 0
+
       operations synchronized {
         val iter = operations.iterator()
         while (iter.hasNext) {

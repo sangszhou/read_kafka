@@ -82,22 +82,11 @@ class GroupMetadataManager(val brokerId: Int,
   this.logIdent = "[Group Metadata Manager on Broker " + brokerId + "]: "
 
   scheduler.startup()
+
   scheduler.schedule(name = "delete-expired-consumer-offsets",
     fun = deleteExpiredOffsets,
     period = config.offsetsRetentionCheckIntervalMs,
     unit = TimeUnit.MILLISECONDS)
-
-  newGauge("NumOffsets",
-    new Gauge[Int] {
-      def value = offsetsCache.size
-    }
-  )
-
-  newGauge("NumGroups",
-    new Gauge[Int] {
-      def value = groupsCache.size
-    }
-  )
 
   def currentGroups(): Iterable[GroupMetadata] = groupsCache.values
 
@@ -995,7 +984,7 @@ case class GroupTopicPartition(group: String, topicPartition: TopicAndPartition)
     "[%s,%s,%d]".format(group, topicPartition.topic, topicPartition.partition)
 }
 
-trait BaseKey{
+trait BaseKey {
   def version: Short
   def key: Object
 }

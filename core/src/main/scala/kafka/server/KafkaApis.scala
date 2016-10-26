@@ -75,11 +75,19 @@ class KafkaApis(val requestChannel: RequestChannel,
         case RequestKeys.ControlledShutdownKey => handleControlledShutdownRequest(request)
         case RequestKeys.OffsetCommitKey => handleOffsetCommitRequest(request)
         case RequestKeys.OffsetFetchKey => handleOffsetFetchRequest(request)
+
+        //
         case RequestKeys.GroupCoordinatorKey => handleGroupCoordinatorRequest(request)
+
+        // 处理添加到 group 的请求, 这个不应该托管给 coordinator 么
         case RequestKeys.JoinGroupKey => handleJoinGroupRequest(request)
+
         case RequestKeys.HeartbeatKey => handleHeartbeatRequest(request)
         case RequestKeys.LeaveGroupKey => handleLeaveGroupRequest(request)
+
+        // coordinator 用的东西
         case RequestKeys.SyncGroupKey => handleSyncGroupRequest(request)
+
         case RequestKeys.DescribeGroupsKey => handleDescribeGroupRequest(request)
         case RequestKeys.ListGroupsKey => handleListGroupsRequest(request)
         case requestId => throw new KafkaException("Unknown api code " + requestId)
@@ -787,9 +795,11 @@ class KafkaApis(val requestChannel: RequestChannel,
         Map.empty[String, ByteBuffer])
       requestChannel.sendResponse(new RequestChannel.Response(request, new ResponseSend(request.connectionId, responseHeader, responseBody)))
     } else {
+
       // let the coordinator to handle join-group
       val protocols = joinGroupRequest.groupProtocols().map(protocol =>
         (protocol.name, Utils.toArray(protocol.metadata))).toList
+
       coordinator.handleJoinGroup(
         joinGroupRequest.groupId,
         joinGroupRequest.memberId,

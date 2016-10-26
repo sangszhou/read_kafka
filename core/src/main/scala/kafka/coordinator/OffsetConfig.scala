@@ -21,20 +21,20 @@ import kafka.message.{NoCompressionCodec, CompressionCodec}
 
 /**
  * Configuration settings for in-built offset management
- * @param maxMetadataSize The maximum allowed metadata for any offset commit.
- * @param loadBufferSize Batch size for reading from the offsets segments when loading offsets into the cache.
- * @param offsetsRetentionMs Offsets older than this retention period will be discarded.
- * @param offsetsRetentionCheckIntervalMs Frequency at which to check for expired offsets.
- * @param offsetsTopicNumPartitions The number of partitions for the offset commit topic (should not change after deployment).
+ * @param maxMetadataSize The maximum allowed metadata for any offset commit
+ * @param loadBufferSize Batch size for reading from the offsets segments when loading offsets into the cache
+ * @param offsetsRetentionMs Offsets older than this retention period will be discarded
+ * @param offsetsRetentionCheckIntervalMs Frequency at which to check for expired offsets
+ * @param offsetsTopicNumPartitions The number of partitions for the offset commit topic (should not change after deployment)
  * @param offsetsTopicSegmentBytes The offsets topic segment bytes should be kept relatively small to facilitate faster
  *                                 log compaction and faster offset loads
  * @param offsetsTopicReplicationFactor The replication factor for the offset commit topic (set higher to ensure availability).
  * @param offsetsTopicCompressionCodec Compression codec for the offsets topic - compression should be turned on in
- *                                     order to achieve "atomic" commits.
+ *                                     order to achieve "atomic" commits
  * @param offsetCommitTimeoutMs The offset commit will be delayed until all replicas for the offsets topic receive the
- *                              commit or this timeout is reached. (Similar to the producer request timeout.)
+ *                              commit or this timeout is reached. (Similar to the producer request timeout)
  * @param offsetCommitRequiredAcks The required acks before the commit can be accepted. In general, the default (-1)
- *                                 should not be overridden.
+ *                                 should not be overridden
  */
 case class OffsetConfig(maxMetadataSize: Int = OffsetConfig.DefaultMaxMetadataSize,
                         loadBufferSize: Int = OffsetConfig.DefaultLoadBufferSize,

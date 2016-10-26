@@ -40,6 +40,7 @@ public class JoinGroupRequest extends AbstractRequest {
     private final int sessionTimeout;
     private final String memberId;
     private final String protocolType;
+
     private final List<ProtocolMetadata> groupProtocols;
 
     public static class ProtocolMetadata {

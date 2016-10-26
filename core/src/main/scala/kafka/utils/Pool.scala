@@ -26,6 +26,7 @@ import kafka.common.KafkaException
 class Pool[K,V](valueFactory: Option[(K) => V] = None) extends Iterable[(K, V)] {
 
   private val pool: ConcurrentMap[K, V] = new ConcurrentHashMap[K, V]
+
   private val createLock = new Object
 
   def this(m: collection.Map[K, V]) {
@@ -49,8 +50,8 @@ class Pool[K,V](valueFactory: Option[(K) => V] = None) extends Iterable[(K, V)] 
    *         put a value.
    */
   def getAndMaybePut(key: K) = {
-    if (valueFactory.isEmpty)
-      throw new KafkaException("Empty value factory in pool.")
+    if (valueFactory.isEmpty) throw new KafkaException("Empty value factory in pool.")
+
     val curr = pool.get(key)
     if (curr == null) {
       createLock synchronized {

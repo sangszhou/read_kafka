@@ -1,19 +1,19 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+  * contributor license agreements.  See the NOTICE file distributed with
+  * this work for additional information regarding copyright ownership.
+  * The ASF licenses this file to You under the Apache License, Version 2.0
+  * (the "License"); you may not use this file except in compliance with
+  * the License.  You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 
 package kafka.consumer
 
@@ -44,53 +44,58 @@ import scala.collection._
 import scala.collection.JavaConversions._
 
 /**
- * This class handles the consumers interaction with zookeeper
- *
- * Directories:
- * 1. Consumer id registry:
- * /consumers/[group_id]/ids/[consumer_id] -> topic1,...topicN
- * A consumer has a unique consumer id within a consumer group. A consumer registers its id as an ephemeral znode
- * and puts all topics that it subscribes to as the value of the znode. The znode is deleted when the client is gone.
- * A consumer subscribes to event changes of the consumer id registry within its group.
- *
- * The consumer id is picked up from configuration, instead of the sequential id assigned by ZK. Generated sequential
- * ids are hard to recover during temporary connection loss to ZK, since it's difficult for the client to figure out
- * whether the creation of a sequential znode has succeeded or not. More details can be found at
- * (http://wiki.apache.org/hadoop/ZooKeeper/ErrorHandling)
- *
- * 2. Broker node registry:
- * /brokers/[0...N] --> { "host" : "host:port",
- *                        "topics" : {"topic1": ["partition1" ... "partitionN"], ...,
- *                                    "topicN": ["partition1" ... "partitionN"] } }
- * This is a list of all present broker brokers. A unique logical node id is configured on each broker node. A broker
- * node registers itself on start-up and creates a znode with the logical node id under /brokers. The value of the znode
- * is a JSON String that contains (1) the host name and the port the broker is listening to, (2) a list of topics that
- * the broker serves, (3) a list of logical partitions assigned to each topic on the broker.
- * A consumer subscribes to event changes of the broker node registry.
- *
- * 3. Partition owner registry:
- * /consumers/[group_id]/owner/[topic]/[broker_id-partition_id] --> consumer_node_id
- * This stores the mapping before broker partitions and consumers. Each partition is owned by a unique consumer
- * within a consumer group. The mapping is reestablished after each rebalancing.
- *
- * 4. Consumer offset tracking:
- * /consumers/[group_id]/offsets/[topic]/[broker_id-partition_id] --> offset_counter_value
- * Each consumer tracks the offset of the latest message consumed for each partition.
- *
- */
+  * This class handles the consumers interaction with zookeeper
+  *
+  * Directories:
+  * 1. Consumer id registry:
+  * /consumers/[group_id]/ids/[consumer_id] -> topic1,...topicN
+  * A consumer has a unique consumer id within a consumer group. A consumer registers its id as an ephemeral znode
+  * and puts all topics that it subscribes to as the value of the znode. The znode is deleted when the client is gone.
+  * A consumer subscribes to event changes of the consumer id registry within its group.
+  *
+  * The consumer id is picked up from configuration, instead of the sequential id assigned by ZK. Generated sequential
+  * ids are hard to recover during temporary connection loss to ZK, since it's difficult for the client to figure out
+  * whether the creation of a sequential znode has succeeded or not. More details can be found at
+  * (http://wiki.apache.org/hadoop/ZooKeeper/ErrorHandling)
+  *
+  * 2. Broker node registry:
+  * /brokers/[0...N] --> { "host" : "host:port",
+  * "topics" : {"topic1": ["partition1" ... "partitionN"], ...,
+  * "topicN": ["partition1" ... "partitionN"] } }
+  *
+  * This is a list of all present broker brokers. A unique logical node id is configured on each broker node. A broker
+  * node registers itself on start-up and creates a znode with the logical node id under /brokers. The value of the znode
+  * is a JSON String that contains (1) the host name and the port the broker is listening to, (2) a list of topics that
+  * the broker serves, (3) a list of logical partitions assigned to each topic on the broker.
+  * A consumer subscribes to event changes of the broker node registry.
+  *
+  * 3. Partition owner registry:
+  * /consumers/[group_id]/owner/[topic]/[broker_id-partition_id] --> consumer_node_id
+  * This stores the mapping before broker partitions and consumers. Each partition is owned by a unique consumer
+  * within a consumer group. The mapping is reestablished after each rebalancing.
+  *
+  * 4. Consumer offset tracking:
+  * /consumers/[group_id]/offsets/[topic]/[broker_id-partition_id] --> offset_counter_value
+  * Each consumer tracks the offset of the latest message consumed for each partition.
+  *
+  */
 private[kafka] object ZookeeperConsumerConnector {
   val shutdownCommand: FetchedDataChunk = new FetchedDataChunk(null, null, -1L)
 }
 
 private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
                                                 val enableFetcher: Boolean) // for testing only
-        extends ConsumerConnector with Logging with KafkaMetricsGroup {
+  extends ConsumerConnector with Logging with KafkaMetricsGroup {
 
   private val isShuttingDown = new AtomicBoolean(false)
   private val rebalanceLock = new Object
   private var fetcher: Option[ConsumerFetcherManager] = None
   private var zkUtils: ZkUtils = null
+
+
   private var topicRegistry = new Pool[String, Pool[Int, PartitionTopicInfo]]
+
+
   private val checkpointedZkOffsets = new Pool[TopicAndPartition, Long]
   private val topicThreadIdAndQueues = new Pool[(String, ConsumerThreadId), BlockingQueue[FetchedDataChunk]]
   private val scheduler = new KafkaScheduler(threads = 1, threadNamePrefix = "kafka-consumer-scheduler-")
@@ -112,15 +117,15 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
   private val rebalanceTimer = new KafkaTimer(newTimer("RebalanceRateAndTime", TimeUnit.MILLISECONDS, TimeUnit.SECONDS, Map("clientId" -> config.clientId)))
 
   val consumerIdString = {
-    var consumerUuid : String = null
+    var consumerUuid: String = null
     config.consumerId match {
       case Some(consumerId) // for testing only
       => consumerUuid = consumerId
       case None // generate unique consumerId automatically
       => val uuid = UUID.randomUUID()
-      consumerUuid = "%s-%d-%s".format(
-        InetAddress.getLocalHost.getHostName, System.currentTimeMillis,
-        uuid.getMostSignificantBits().toHexString.substring(0,8))
+        consumerUuid = "%s-%d-%s".format(
+          InetAddress.getLocalHost.getHostName, System.currentTimeMillis,
+          uuid.getMostSignificantBits().toHexString.substring(0, 8))
     }
     config.groupId + "_" + consumerUuid
   }
@@ -134,10 +139,10 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     scheduler.startup
     info("starting auto committer every " + config.autoCommitIntervalMs + " ms")
     scheduler.schedule("kafka-consumer-autocommit",
-                       autoCommit,
-                       delay = config.autoCommitIntervalMs,
-                       period = config.autoCommitIntervalMs,
-                       unit = TimeUnit.MILLISECONDS)
+      autoCommit,
+      delay = config.autoCommitIntervalMs,
+      period = config.autoCommitIntervalMs,
+      unit = TimeUnit.MILLISECONDS)
   }
 
   KafkaMetricsReporter.startReporters(config.props)
@@ -145,29 +150,29 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
 
   def this(config: ConsumerConfig) = this(config, true)
 
-  def createMessageStreams(topicCountMap: Map[String,Int]): Map[String, List[KafkaStream[Array[Byte],Array[Byte]]]] =
+  def createMessageStreams(topicCountMap: Map[String, Int]): Map[String, List[KafkaStream[Array[Byte], Array[Byte]]]] =
     createMessageStreams(topicCountMap, new DefaultDecoder(), new DefaultDecoder())
 
-  def createMessageStreams[K,V](topicCountMap: Map[String,Int], keyDecoder: Decoder[K], valueDecoder: Decoder[V])
-      : Map[String, List[KafkaStream[K,V]]] = {
+  def createMessageStreams[K, V](topicCountMap: Map[String, Int], keyDecoder: Decoder[K], valueDecoder: Decoder[V])
+  : Map[String, List[KafkaStream[K, V]]] = {
     if (messageStreamCreated.getAndSet(true))
       throw new MessageStreamsExistException(this.getClass.getSimpleName +
-                                   " can create message streams at most once",null)
+        " can create message streams at most once", null)
     consume(topicCountMap, keyDecoder, valueDecoder)
   }
 
-  def createMessageStreamsByFilter[K,V](topicFilter: TopicFilter,
-                                        numStreams: Int,
-                                        keyDecoder: Decoder[K] = new DefaultDecoder(),
-                                        valueDecoder: Decoder[V] = new DefaultDecoder()) = {
-    val wildcardStreamsHandler = new WildcardStreamsHandler[K,V](topicFilter, numStreams, keyDecoder, valueDecoder)
+  def createMessageStreamsByFilter[K, V](topicFilter: TopicFilter,
+                                         numStreams: Int,
+                                         keyDecoder: Decoder[K] = new DefaultDecoder(),
+                                         valueDecoder: Decoder[V] = new DefaultDecoder()) = {
+    val wildcardStreamsHandler = new WildcardStreamsHandler[K, V](topicFilter, numStreams, keyDecoder, valueDecoder)
     wildcardStreamsHandler.streams
   }
 
   def setConsumerRebalanceListener(listener: ConsumerRebalanceListener) {
     if (messageStreamCreated.get())
       throw new MessageStreamsExistException(this.getClass.getSimpleName +
-        " can only set consumer rebalance listener before creating streams",null)
+        " can only set consumer rebalance listener before creating streams", null)
     consumerRebalanceListener = listener
   }
 
@@ -179,9 +184,9 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
   private def connectZk() {
     info("Connecting to zookeeper instance at " + config.zkConnect)
     zkUtils = ZkUtils(config.zkConnect,
-                      config.zkSessionTimeoutMs,
-                      config.zkConnectionTimeoutMs,
-                      JaasUtils.isZkSecurityEnabled())
+      config.zkSessionTimeoutMs,
+      config.zkConnectionTimeoutMs,
+      JaasUtils.isZkSecurityEnabled())
   }
 
   // Blocks until the offset manager is located and a channel is established to it.
@@ -206,7 +211,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
           wildcardTopicWatcher.shutdown()
         try {
           if (config.autoCommitEnable)
-	        scheduler.shutdown()
+            scheduler.shutdown()
           fetcher match {
             case Some(f) => f.stopConnections
             case None =>
@@ -229,8 +234,8 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
   }
 
-  def consume[K, V](topicCountMap: scala.collection.Map[String,Int], keyDecoder: Decoder[K], valueDecoder: Decoder[V])
-      : Map[String,List[KafkaStream[K,V]]] = {
+  def consume[K, V](topicCountMap: scala.collection.Map[String, Int], keyDecoder: Decoder[K], valueDecoder: Decoder[V])
+  : Map[String, List[KafkaStream[K, V]]] = {
     debug("entering consume ")
     if (topicCountMap == null)
       throw new RuntimeException("topicCountMap is null")
@@ -242,8 +247,8 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     // make a list of (queue,stream) pairs, one pair for each threadId
     val queuesAndStreams = topicThreadIds.values.map(threadIdSet =>
       threadIdSet.map(_ => {
-        val queue =  new LinkedBlockingQueue[FetchedDataChunk](config.queuedMaxMessages)
-        val stream = new KafkaStream[K,V](
+        val queue = new LinkedBlockingQueue[FetchedDataChunk](config.queuedMaxMessages)
+        val stream = new KafkaStream[K, V](
           queue, config.consumerTimeoutMs, keyDecoder, valueDecoder, config.clientId)
         (queue, stream)
       })
@@ -253,7 +258,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     registerConsumerInZK(dirs, consumerIdString, topicCount)
     reinitializeConsumer(topicCount, queuesAndStreams)
 
-    loadBalancerListener.kafkaMessageAndMetadataStreams.asInstanceOf[Map[String, List[KafkaStream[K,V]]]]
+    loadBalancerListener.kafkaMessageAndMetadataStreams.asInstanceOf[Map[String, List[KafkaStream[K, V]]]]
   }
 
   // this API is used by unit tests only
@@ -263,12 +268,12 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     info("begin registering consumer " + consumerIdString + " in ZK")
     val timestamp = SystemTime.milliseconds.toString
     val consumerRegistrationInfo = Json.encode(Map("version" -> 1, "subscription" -> topicCount.getTopicCountMap, "pattern" -> topicCount.pattern,
-                                                  "timestamp" -> timestamp))
+      "timestamp" -> timestamp))
     val zkWatchedEphemeral = new ZKCheckedEphemeral(dirs.
-                                                    consumerRegistryDir + "/" + consumerIdString, 
-                                                    consumerRegistrationInfo,
-                                                    zkUtils.zkConnection.getZookeeper,
-                                                    false)
+      consumerRegistryDir + "/" + consumerIdString,
+      consumerRegistrationInfo,
+      zkUtils.zkConnection.getZookeeper,
+      false)
     zkWatchedEphemeral.create()
 
     info("end registering consumer " + consumerIdString + " in ZK")
@@ -290,7 +295,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
     catch {
       case t: Throwable =>
-      // log it and let it go
+        // log it and let it go
         error("exception during autoCommit: ", t)
     }
   }
@@ -305,9 +310,11 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
   }
 
   /**
-   * KAFKA-1743: This method added for backward compatibility.
-   */
-  def commitOffsets { commitOffsets(true) }
+    * KAFKA-1743: This method added for backward compatibility.
+    */
+  def commitOffsets {
+    commitOffsets(true)
+  }
 
   def commitOffsets(isAutoCommit: Boolean) {
 
@@ -418,7 +425,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       Some(OffsetFetchResponse(Map.empty))
     else if (config.offsetsStorage == "zookeeper") {
       val offsets = partitions.map(fetchOffsetFromZooKeeper)
-      Some(OffsetFetchResponse(immutable.Map(offsets:_*)))
+      Some(OffsetFetchResponse(immutable.Map(offsets: _*)))
     } else {
       val offsetFetchRequest = OffsetFetchRequest(groupId = config.groupId, requestInfo = partitions, clientId = config.clientId)
 
@@ -432,9 +439,9 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
             trace("Offset fetch response: %s.".format(offsetFetchResponse))
 
             val (leaderChanged, loadInProgress) =
-              offsetFetchResponse.requestInfo.foldLeft(false, false) { case(folded, (topicPartition, offsetMetadataAndError)) =>
+              offsetFetchResponse.requestInfo.foldLeft(false, false) { case (folded, (topicPartition, offsetMetadataAndError)) =>
                 (folded._1 || (offsetMetadataAndError.error == ErrorMapping.NotCoordinatorForConsumerCode),
-                 folded._2 || (offsetMetadataAndError.error == ErrorMapping.OffsetsLoadInProgressCode))
+                  folded._2 || (offsetMetadataAndError.error == ErrorMapping.OffsetsLoadInProgressCode))
               }
 
             if (leaderChanged) {
@@ -482,9 +489,9 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
 
 
   class ZKSessionExpireListener(val dirs: ZKGroupDirs,
-                                 val consumerIdString: String,
-                                 val topicCount: TopicCount,
-                                 val loadBalancerListener: ZKRebalancerListener)
+                                val consumerIdString: String,
+                                val topicCount: TopicCount,
+                                val loadBalancerListener: ZKRebalancerListener)
     extends IZkStateListener {
     @throws(classOf[Exception])
     def handleStateChanged(state: KeeperState) {
@@ -492,19 +499,19 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
 
     /**
-     * Called after the zookeeper session has expired and a new session has been created. You would have to re-create
-     * any ephemeral nodes here.
-     *
-     * @throws Exception
-     *             On any error.
-     */
+      * Called after the zookeeper session has expired and a new session has been created. You would have to re-create
+      * any ephemeral nodes here.
+      *
+      * @throws Exception
+      * On any error.
+      */
     @throws(classOf[Exception])
     def handleNewSession() {
       /**
-       *  When we get a SessionExpired event, we lost all ephemeral nodes and zkclient has reestablished a
-       *  connection for us. We need to release the ownership of the current consumer and re-register this
-       *  consumer in the consumer registry and trigger a rebalance.
-       */
+        * When we get a SessionExpired event, we lost all ephemeral nodes and zkclient has reestablished a
+        * connection for us. We need to release the ownership of the current consumer and re-register this
+        * consumer in the consumer registry and trigger a rebalance.
+        */
       info("ZK expired; release old broker parition ownership; re-register consumer " + consumerIdString)
       loadBalancerListener.resetState()
       registerConsumerInZK(dirs, consumerIdString, topicCount)
@@ -522,7 +529,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
   class ZKTopicPartitionChangeListener(val loadBalancerListener: ZKRebalancerListener)
     extends IZkDataListener {
 
-    def handleDataChange(dataPath : String, data: Object) {
+    def handleDataChange(dataPath: String, data: Object) {
       try {
         info("Topic info for path " + dataPath + " changed to " + data.toString + ", triggering rebalance")
         // queue up the rebalance event
@@ -530,19 +537,19 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
         // There is no need to re-subscribe the watcher since it will be automatically
         // re-registered upon firing of this event by zkClient
       } catch {
-        case e: Throwable => error("Error while handling topic partition change for data path " + dataPath, e )
+        case e: Throwable => error("Error while handling topic partition change for data path " + dataPath, e)
       }
     }
 
     @throws(classOf[Exception])
-    def handleDataDeleted(dataPath : String) {
+    def handleDataDeleted(dataPath: String) {
       // TODO: This need to be implemented when we support delete topic
       warn("Topic for path " + dataPath + " gets deleted, which should not happen at this time")
     }
   }
 
   class ZKRebalancerListener(val group: String, val consumerIdString: String,
-                             val kafkaMessageAndMetadataStreams: mutable.Map[String,List[KafkaStream[_,_]]])
+                             val kafkaMessageAndMetadataStreams: mutable.Map[String, List[KafkaStream[_, _]]])
     extends IZkChildListener {
 
     private val partitionAssignor = PartitionAssignor.createInstance(config.partitionAssignmentStrategy)
@@ -587,7 +594,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     watcherExecutorThread.start()
 
     @throws(classOf[Exception])
-    def handleChildChange(parentPath : String, curChilds : java.util.List[String]) {
+    def handleChildChange(parentPath: String, curChilds: java.util.List[String]) {
       rebalanceEventTriggered()
     }
 
@@ -605,10 +612,10 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       debug("Consumer " + consumerIdString + " releasing " + znode)
     }
 
-    private def releasePartitionOwnership(localTopicRegistry: Pool[String, Pool[Int, PartitionTopicInfo]])= {
+    private def releasePartitionOwnership(localTopicRegistry: Pool[String, Pool[Int, PartitionTopicInfo]]) = {
       info("Releasing partition ownership")
       for ((topic, infos) <- localTopicRegistry) {
-        for(partition <- infos.keys) {
+        for (partition <- infos.keys) {
           deletePartitionOwnershipFromZK(topic, partition)
         }
         removeMetric("OwnedPartitionsCount", ownedPartitionsCountMetricTags(topic))
@@ -625,7 +632,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       rebalanceLock synchronized {
         rebalanceTimer.time {
           for (i <- 0 until config.rebalanceMaxRetries) {
-            if(isShuttingDown.get())  {
+            if (isShuttingDown.get()) {
               return
             }
             info("begin rebalancing consumer " + consumerIdString + " try #" + i)
@@ -636,10 +643,11 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
               done = rebalance(cluster)
             } catch {
               case e: Throwable =>
+
                 /** occasionally, we may hit a ZK exception because the ZK state is changing while we are iterating.
                   * For example, a ZK node can disappear between the time we get all children and the time we try to get
                   * the value of a child. Just let this go since another rebalance will be triggered.
-                  **/
+                  * */
                 info("exception during rebalance ", e)
             }
             info("end rebalancing consumer " + consumerIdString + " try #" + i)
@@ -657,7 +665,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
         }
       }
 
-      throw new ConsumerRebalanceFailedException(consumerIdString + " can't rebalance after " + config.rebalanceMaxRetries +" retries")
+      throw new ConsumerRebalanceFailedException(consumerIdString + " can't rebalance after " + config.rebalanceMaxRetries + " retries")
     }
 
     private def rebalance(cluster: Cluster): Boolean = {
@@ -674,11 +682,11 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       }
       else {
         /**
-         * fetchers must be stopped to avoid data duplication, since if the current
-         * rebalancing attempt fails, the partitions that are released could be owned by another consumer.
-         * But if we don't stop the fetchers first, this consumer would continue returning data for released
-         * partitions in parallel. So, not stopping the fetchers leads to duplicate data.
-         */
+          * fetchers must be stopped to avoid data duplication, since if the current
+          * rebalancing attempt fails, the partitions that are released could be owned by another consumer.
+          * But if we don't stop the fetchers first, this consumer would continue returning data for released
+          * partitions in parallel. So, not stopping the fetchers leads to duplicate data.
+          */
         closeFetchers(cluster, kafkaMessageAndMetadataStreams, myTopicThreadIdsMap)
         if (consumerRebalanceListener != null) {
           info("Invoking rebalance listener before relasing partition ownerships.")
@@ -695,6 +703,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
         val assignmentContext = new AssignmentContext(group, consumerIdString, config.excludeInternalTopics, zkUtils)
         val globalPartitionAssignment = partitionAssignor.assign(assignmentContext)
         val partitionAssignment = globalPartitionAssignment.get(assignmentContext.consumerId)
+
         val currentTopicRegistry = new Pool[String, Pool[Int, PartitionTopicInfo]](
           valueFactory = Some((topic: String) => new Pool[Int, PartitionTopicInfo]))
 
@@ -715,20 +724,20 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
           })
 
           /**
-           * move the partition ownership here, since that can be used to indicate a truly successful re-balancing attempt
-           * A rebalancing attempt is completed successfully only after the fetchers have been started correctly
-           */
-          if(reflectPartitionOwnershipDecision(partitionAssignment)) {
+            * move the partition ownership here, since that can be used to indicate a truly successful re-balancing attempt
+            * A rebalancing attempt is completed successfully only after the fetchers have been started correctly
+            */
+          if (reflectPartitionOwnershipDecision(partitionAssignment)) {
             allTopicsOwnedPartitionsCount = partitionAssignment.size
 
-            partitionAssignment.view.groupBy { case(topicPartition, consumerThreadId) => topicPartition.topic }
-                                      .foreach { case (topic, partitionThreadPairs) =>
-              newGauge("OwnedPartitionsCount",
-                new Gauge[Int] {
-                  def value() = partitionThreadPairs.size
-                },
-                ownedPartitionsCountMetricTags(topic))
-            }
+            partitionAssignment.view.groupBy { case (topicPartition, consumerThreadId) => topicPartition.topic }
+              .foreach { case (topic, partitionThreadPairs) =>
+                newGauge("OwnedPartitionsCount",
+                  new Gauge[Int] {
+                    def value() = partitionThreadPairs.size
+                  },
+                  ownedPartitionsCountMetricTags(topic))
+              }
 
             topicRegistry = currentTopicRegistry
             // Invoke beforeStartingFetchers callback if the consumerRebalanceListener is set.
@@ -747,12 +756,12 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
                     case (topicAndPartition, consumerThreadId) =>
                       topicAndPartition.partition -> consumerThreadId
                   })
-                  topic -> mapAsJavaMap(collection.mutable.Map(partitionOwnershipForTopicScalaMap.toSeq:_*))
+                  topic -> mapAsJavaMap(collection.mutable.Map(partitionOwnershipForTopicScalaMap.toSeq: _*))
                     .asInstanceOf[java.util.Map[java.lang.Integer, ConsumerThreadId]]
               })
               consumerRebalanceListener.beforeStartingFetchers(
                 consumerIdString,
-                mapAsJavaMap(collection.mutable.Map(partitionAssigmentMapForCallback.toSeq:_*))
+                mapAsJavaMap(collection.mutable.Map(partitionAssigmentMapForCallback.toSeq: _*))
               )
             }
             updateFetcher(cluster)
@@ -765,46 +774,47 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
 
     private def closeFetchersForQueues(cluster: Cluster,
-                                       messageStreams: Map[String,List[KafkaStream[_,_]]],
+                                       messageStreams: Map[String, List[KafkaStream[_, _]]],
                                        queuesToBeCleared: Iterable[BlockingQueue[FetchedDataChunk]]) {
       val allPartitionInfos = topicRegistry.values.map(p => p.values).flatten
       fetcher match {
         case Some(f) =>
           f.stopConnections
           clearFetcherQueues(allPartitionInfos, cluster, queuesToBeCleared, messageStreams)
+
           /**
-          * here, we need to commit offsets before stopping the consumer from returning any more messages
-          * from the current data chunk. Since partition ownership is not yet released, this commit offsets
-          * call will ensure that the offsets committed now will be used by the next consumer thread owning the partition
-          * for the current data chunk. Since the fetchers are already shutdown and this is the last chunk to be iterated
-          * by the consumer, there will be no more messages returned by this iterator until the rebalancing finishes
-          * successfully and the fetchers restart to fetch more data chunks
-          **/
-        if (config.autoCommitEnable) {
-          info("Committing all offsets after clearing the fetcher queues")
-          commitOffsets(true)
-        }
+            * here, we need to commit offsets before stopping the consumer from returning any more messages
+            * from the current data chunk. Since partition ownership is not yet released, this commit offsets
+            * call will ensure that the offsets committed now will be used by the next consumer thread owning the partition
+            * for the current data chunk. Since the fetchers are already shutdown and this is the last chunk to be iterated
+            * by the consumer, there will be no more messages returned by this iterator until the rebalancing finishes
+            * successfully and the fetchers restart to fetch more data chunks
+            **/
+          if (config.autoCommitEnable) {
+            info("Committing all offsets after clearing the fetcher queues")
+            commitOffsets(true)
+          }
         case None =>
       }
     }
 
     private def clearFetcherQueues(topicInfos: Iterable[PartitionTopicInfo], cluster: Cluster,
                                    queuesTobeCleared: Iterable[BlockingQueue[FetchedDataChunk]],
-                                   messageStreams: Map[String,List[KafkaStream[_,_]]]) {
+                                   messageStreams: Map[String, List[KafkaStream[_, _]]]) {
 
       // Clear all but the currently iterated upon chunk in the consumer thread's queue
       queuesTobeCleared.foreach(_.clear)
       info("Cleared all relevant queues for this fetcher")
 
       // Also clear the currently iterated upon chunk in the consumer threads
-      if(messageStreams != null)
-         messageStreams.foreach(_._2.foreach(s => s.clear()))
+      if (messageStreams != null)
+        messageStreams.foreach(_._2.foreach(s => s.clear()))
 
       info("Cleared the data chunks in all the consumer message iterators")
 
     }
 
-    private def closeFetchers(cluster: Cluster, messageStreams: Map[String,List[KafkaStream[_,_]]],
+    private def closeFetchers(cluster: Cluster, messageStreams: Map[String, List[KafkaStream[_, _]]],
                               relevantTopicThreadIdsMap: Map[String, Set[ConsumerThreadId]]) {
       // only clear the fetcher queues for certain topic partitions that *might* no longer be served by this consumer
       // after this rebalancing attempt
@@ -814,12 +824,12 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
 
     private def updateFetcher(cluster: Cluster) {
       // update partitions for fetcher
-      var allPartitionInfos : List[PartitionTopicInfo] = Nil
+      var allPartitionInfos: List[PartitionTopicInfo] = Nil
       for (partitionInfos <- topicRegistry.values)
         for (partition <- partitionInfos.values)
           allPartitionInfos ::= partition
       info("Consumer " + consumerIdString + " selected partitions : " +
-        allPartitionInfos.sortWith((s,t) => s.partitionId < t.partitionId).map(_.toString).mkString(","))
+        allPartitionInfos.sortWith((s, t) => s.partitionId < t.partitionId).map(_.toString).mkString(","))
 
       fetcher match {
         case Some(f) =>
@@ -829,7 +839,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
 
     private def reflectPartitionOwnershipDecision(partitionAssignment: Map[TopicAndPartition, ConsumerThreadId]): Boolean = {
-      var successfullyOwnedPartitions : List[(String, Int)] = Nil
+      var successfullyOwnedPartitions: List[(String, Int)] = Nil
       val partitionOwnershipSuccessful = partitionAssignment.map { partitionOwner =>
         val topic = partitionOwner._1.topic
         val partition = partitionOwner._1.partition
@@ -848,9 +858,9 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
           case e2: Throwable => throw e2
         }
       }
-      val hasPartitionOwnershipFailed = partitionOwnershipSuccessful.foldLeft(0)((sum, decision) => sum + (if(decision) 0 else 1))
+      val hasPartitionOwnershipFailed = partitionOwnershipSuccessful.foldLeft(0)((sum, decision) => sum + (if (decision) 0 else 1))
       /* even if one of the partition ownership attempt has failed, return false */
-      if(hasPartitionOwnershipFailed > 0) {
+      if (hasPartitionOwnershipFailed > 0) {
         // remove all paths that we have owned in ZK
         successfullyOwnedPartitions.foreach(topicAndPartition => deletePartitionOwnershipFromZK(topicAndPartition._1, topicAndPartition._2))
         false
@@ -867,29 +877,29 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       val consumedOffset = new AtomicLong(offset)
       val fetchedOffset = new AtomicLong(offset)
       val partTopicInfo = new PartitionTopicInfo(topic,
-                                                 partition,
-                                                 queue,
-                                                 consumedOffset,
-                                                 fetchedOffset,
-                                                 new AtomicInteger(config.fetchMessageMaxBytes),
-                                                 config.clientId)
+        partition,
+        queue,
+        consumedOffset,
+        fetchedOffset,
+        new AtomicInteger(config.fetchMessageMaxBytes),
+        config.clientId)
       partTopicInfoMap.put(partition, partTopicInfo)
       debug(partTopicInfo + " selected new offset " + offset)
       checkpointedZkOffsets.put(TopicAndPartition(topic, partition), offset)
     }
   }
 
-  private def reinitializeConsumer[K,V](
-      topicCount: TopicCount,
-      queuesAndStreams: List[(LinkedBlockingQueue[FetchedDataChunk],KafkaStream[K,V])]) {
+  private def reinitializeConsumer[K, V](
+                                          topicCount: TopicCount,
+                                          queuesAndStreams: List[(LinkedBlockingQueue[FetchedDataChunk], KafkaStream[K, V])]) {
 
     val dirs = new ZKGroupDirs(config.groupId)
 
     // listener to consumer and partition changes
     if (loadBalancerListener == null) {
-      val topicStreamsMap = new mutable.HashMap[String,List[KafkaStream[K,V]]]
+      val topicStreamsMap = new mutable.HashMap[String, List[KafkaStream[K, V]]]
       loadBalancerListener = new ZKRebalancerListener(
-        config.groupId, consumerIdString, topicStreamsMap.asInstanceOf[scala.collection.mutable.Map[String, List[KafkaStream[_,_]]]])
+        config.groupId, consumerIdString, topicStreamsMap.asInstanceOf[scala.collection.mutable.Map[String, List[KafkaStream[_, _]]]])
     }
 
     // create listener for session expired event if not exist yet
@@ -905,7 +915,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
 
     // map of {topic -> Set(thread-1, thread-2, ...)}
     val consumerThreadIdsPerTopic: Map[String, Set[ConsumerThreadId]] =
-      topicCount.getConsumerThreadIdsPerTopic
+    topicCount.getConsumerThreadIdsPerTopic
 
     val allQueuesAndStreams = topicCount match {
       case wildTopicCount: WildcardTopicCount =>
@@ -919,13 +929,13 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
 
     val topicThreadIds = consumerThreadIdsPerTopic.map {
-      case(topic, threadIds) =>
+      case (topic, threadIds) =>
         threadIds.map((topic, _))
     }.flatten
 
     require(topicThreadIds.size == allQueuesAndStreams.size,
       "Mismatch between thread ID count (%d) and queue count (%d)"
-      .format(topicThreadIds.size, allQueuesAndStreams.size))
+        .format(topicThreadIds.size, allQueuesAndStreams.size))
     val threadQueueStreamPairs = topicThreadIds.zip(allQueuesAndStreams)
 
     threadQueueStreamPairs.foreach(e => {
@@ -967,11 +977,11 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     loadBalancerListener.syncedRebalance()
   }
 
-  class WildcardStreamsHandler[K,V](topicFilter: TopicFilter,
-                                  numStreams: Int,
-                                  keyDecoder: Decoder[K],
-                                  valueDecoder: Decoder[V])
-                                extends TopicEventHandler[String] {
+  class WildcardStreamsHandler[K, V](topicFilter: TopicFilter,
+                                     numStreams: Int,
+                                     keyDecoder: Decoder[K],
+                                     valueDecoder: Decoder[V])
+    extends TopicEventHandler[String] {
 
     if (messageStreamCreated.getAndSet(true))
       throw new RuntimeException("Each consumer connector can create " +
@@ -980,18 +990,18 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     private val wildcardQueuesAndStreams = (1 to numStreams)
       .map(e => {
         val queue = new LinkedBlockingQueue[FetchedDataChunk](config.queuedMaxMessages)
-        val stream = new KafkaStream[K,V](queue,
-                                          config.consumerTimeoutMs,
-                                          keyDecoder,
-                                          valueDecoder,
-                                          config.clientId)
+        val stream = new KafkaStream[K, V](queue,
+          config.consumerTimeoutMs,
+          keyDecoder,
+          valueDecoder,
+          config.clientId)
         (queue, stream)
-    }).toList
+      }).toList
 
-     // bootstrap with existing topics
+    // bootstrap with existing topics
     private var wildcardTopics =
-      zkUtils.getChildrenParentMayNotExist(BrokerTopicsPath)
-        .filter(topic => topicFilter.isTopicAllowed(topic, config.excludeInternalTopics))
+    zkUtils.getChildrenParentMayNotExist(BrokerTopicsPath)
+      .filter(topic => topicFilter.isTopicAllowed(topic, config.excludeInternalTopics))
 
     private val wildcardTopicCount = TopicCount.constructTopicCount(
       consumerIdString, topicFilter, numStreams, zkUtils, config.excludeInternalTopics)
@@ -1014,7 +1024,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       val addedTopics = updatedTopics filterNot (wildcardTopics contains)
       if (addedTopics.nonEmpty)
         info("Topic event: added topics = %s"
-                             .format(addedTopics))
+          .format(addedTopics))
 
       /*
        * TODO: Deleted topics are interesting (and will not be a concern until
@@ -1024,7 +1034,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
       val deletedTopics = wildcardTopics filterNot (updatedTopics contains)
       if (deletedTopics.nonEmpty)
         info("Topic event: deleted topics = %s"
-                             .format(deletedTopics))
+          .format(deletedTopics))
 
       wildcardTopics = updatedTopics
       info("Topics to consume = %s".format(wildcardTopics))
@@ -1033,7 +1043,8 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
         reinitializeConsumer(wildcardTopicCount, wildcardQueuesAndStreams)
     }
 
-    def streams: Seq[KafkaStream[K,V]] =
+    def streams: Seq[KafkaStream[K, V]] =
       wildcardQueuesAndStreams.map(_._2)
   }
+
 }

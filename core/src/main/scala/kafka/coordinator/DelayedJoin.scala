@@ -23,11 +23,11 @@ import kafka.server.DelayedOperation
  * Delayed rebalance operations that are added to the purgatory when group is preparing for rebalance
  *
  * Whenever a join-group request is received, check if all known group members have requested
- * to re-join the group; if yes, complete this operation to proceed rebalance.
+ * to re-join the group; if yes, complete this operation to proceed rebalance
  *
  * When the operation has expired, any known members that have not requested to re-join
  * the group are marked as failed, and complete this operation to proceed rebalance with
- * the rest of the group.
+ * the rest of the group
  */
 private[coordinator] class DelayedJoin(coordinator: GroupCoordinator,
                                             group: GroupMetadata,

@@ -128,6 +128,7 @@ private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, ta
     }
   }
 
+  // 添加的 task 和 key 就没有什么关系, 他们的关系存在哪呢
   def add(timerTaskEntry: TimerTaskEntry): Boolean = {
     val expiration = timerTaskEntry.timerTask.expirationMs
 
