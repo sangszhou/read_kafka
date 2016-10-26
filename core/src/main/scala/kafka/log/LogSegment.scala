@@ -158,10 +158,11 @@ class LogSegment(val log: FileMessageSet,
   }
   
   /**
-   * Run recovery on the given segment. This will rebuild the index from the log file and lop off any invalid bytes from the end of the log and index.
+   * Run recovery on the given segment. This will rebuild the index from the log file and
+    * lop off any invalid bytes from the end of the log and index.
    * 
-   * @param maxMessageSize A bound the memory allocation in the case of a corrupt message size--we will assume any message larger than this
-   * is corrupt.
+   * @param maxMessageSize A bound the memory allocation in the case of a corrupt message size--we
+    *                       will assume any message larger than this is corrupt.
    * 
    * @return The number of bytes truncated from the log
    */
@@ -172,10 +173,12 @@ class LogSegment(val log: FileMessageSet,
     var validBytes = 0
     var lastIndexEntry = 0
     val iter = log.iterator(maxMessageSize)
+
     try {
       while(iter.hasNext) {
         val entry = iter.next
         entry.message.ensureValid()
+
         if(validBytes - lastIndexEntry > indexIntervalBytes) {
           // we need to decompress the message, if required, to get the offset of the first uncompressed message
           val startOffset =
@@ -185,9 +188,12 @@ class LogSegment(val log: FileMessageSet,
               case _ =>
                 ByteBufferMessageSet.deepIterator(entry.message).next().offset
           }
+
           index.append(startOffset, validBytes)
+
           lastIndexEntry = validBytes
         }
+
         validBytes += MessageSet.entrySize(entry.message)
       }
     } catch {

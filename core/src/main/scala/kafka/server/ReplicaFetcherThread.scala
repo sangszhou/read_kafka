@@ -1,19 +1,19 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+  * contributor license agreements.  See the NOTICE file distributed with
+  * this work for additional information regarding copyright ownership.
+  * The ASF licenses this file to You under the Apache License, Version 2.0
+  * (the "License"); you may not use this file except in compliance with
+  * the License.  You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 
 package kafka.server
 
@@ -47,10 +47,10 @@ class ReplicaFetcherThread(name: String,
                            metrics: Metrics,
                            time: Time)
   extends AbstractFetcherThread(name = name,
-                                clientId = name,
-                                sourceBroker = sourceBroker,
-                                fetchBackOffMs = brokerConfig.replicaFetchBackoffMs,
-                                isInterruptible = false) {
+    clientId = name,
+    sourceBroker = sourceBroker,
+    fetchBackOffMs = brokerConfig.replicaFetchBackoffMs,
+    isInterruptible = false) {
 
   type REQ = FetchRequest
   type PD = PartitionData
@@ -109,17 +109,19 @@ class ReplicaFetcherThread(name: String,
       if (fetchOffset != replica.logEndOffset.messageOffset)
         throw new RuntimeException("Offset mismatch: fetched offset = %d, log end offset = %d.".format(fetchOffset, replica.logEndOffset.messageOffset))
       trace("Follower %d has replica log end offset %d for partition %s. Received %d messages and leader hw %d"
-            .format(replica.brokerId, replica.logEndOffset.messageOffset, topicAndPartition, messageSet.sizeInBytes, partitionData.highWatermark))
+        .format(replica.brokerId, replica.logEndOffset.messageOffset, topicAndPartition, messageSet.sizeInBytes, partitionData.highWatermark))
       replica.log.get.append(messageSet, assignOffsets = false)
       trace("Follower %d has replica log end offset %d after appending %d bytes of messages for partition %s"
-            .format(replica.brokerId, replica.logEndOffset.messageOffset, messageSet.sizeInBytes, topicAndPartition))
+        .format(replica.brokerId, replica.logEndOffset.messageOffset, messageSet.sizeInBytes, topicAndPartition))
+
       val followerHighWatermark = replica.logEndOffset.messageOffset.min(partitionData.highWatermark)
+
       // for the follower replica, we do not need to keep
       // its segment base offset the physical position,
       // these values will be computed upon making the leader
       replica.highWatermark = new LogOffsetMetadata(followerHighWatermark)
       trace("Follower %d set replica high watermark for partition [%s,%d] to %s"
-            .format(replica.brokerId, topic, partitionId, followerHighWatermark))
+        .format(replica.brokerId, topic, partitionId, followerHighWatermark))
     } catch {
       case e: KafkaStorageException =>
         fatal("Disk error while replicating data.", e)
@@ -136,21 +138,22 @@ class ReplicaFetcherThread(name: String,
   }
 
   /**
-   * Handle a partition whose offset is out of range and return a new fetch offset.
-   */
+    * Handle a partition whose offset is out of range and return a new fetch offset.
+    * 什么情况下会 offset out of range
+    */
   def handleOffsetOutOfRange(topicAndPartition: TopicAndPartition): Long = {
     val replica = replicaMgr.getReplica(topicAndPartition.topic, topicAndPartition.partition).get
 
     /**
-     * Unclean leader election: A follower goes down, in the meanwhile the leader keeps appending messages. The follower comes back up
-     * and before it has completely caught up with the leader's logs, all replicas in the ISR go down. The follower is now uncleanly
-     * elected as the new leader, and it starts appending messages from the client. The old leader comes back up, becomes a follower
-     * and it may discover that the current leader's end offset is behind its own end offset.
-     *
-     * In such a case, truncate the current follower's log to the current leader's end offset and continue fetching.
-     *
-     * There is a potential for a mismatch between the logs of the two replicas here. We don't fix this mismatch as of now.
-     */
+      * Unclean leader election: A follower goes down, in the meanwhile the leader keeps appending messages. The follower comes back up
+      * and before it has completely caught up with the leader's logs, all replicas in the ISR go down. The follower is now uncleanly
+      * elected as the new leader, and it starts appending messages from the client. The old leader comes back up, becomes a follower
+      * and it may discover that the current leader's end offset is behind its own end offset.
+      *
+      * In such a case, truncate the current follower's log to the current leader's end offset and continue fetching.
+      *
+      * There is a potential for a mismatch between the logs of the two replicas here. We don't fix this mismatch as of now.
+      */
     val leaderEndOffset: Long = earliestOrLatestOffset(topicAndPartition, ListOffsetRequest.LATEST_TIMESTAMP,
       brokerConfig.brokerId)
 
@@ -163,7 +166,7 @@ class ReplicaFetcherThread(name: String,
         // Log a fatal error and shutdown the broker to ensure that data loss does not unexpectedly occur.
         fatal("Halting because log truncation is not allowed for topic %s,".format(topicAndPartition.topic) +
           " Current leader %d's latest offset %d is less than replica %d's latest offset %d"
-          .format(sourceBroker.id, leaderEndOffset, brokerConfig.brokerId, replica.logEndOffset.messageOffset))
+            .format(sourceBroker.id, leaderEndOffset, brokerConfig.brokerId, replica.logEndOffset.messageOffset))
         Runtime.getRuntime.halt(1)
       }
 
@@ -173,11 +176,11 @@ class ReplicaFetcherThread(name: String,
       leaderEndOffset
     } else {
       /**
-       * The follower could have been down for a long time and when it starts up, its end offset could be smaller than the leader's
-       * start offset because the leader has deleted old logs (log.logEndOffset < leaderStartOffset).
-       *
-       * Roll out a new log at the follower with the start offset equal to the current leader's start offset and continue fetching.
-       */
+        * The follower could have been down for a long time and when it starts up, its end offset could be smaller than the leader's
+        * start offset because the leader has deleted old logs (log.logEndOffset < leaderStartOffset).
+        *
+        * Roll out a new log at the follower with the start offset equal to the current leader's start offset and continue fetching.
+        */
       val leaderStartOffset: Long = earliestOrLatestOffset(topicAndPartition, ListOffsetRequest.EARLIEST_TIMESTAMP,
         brokerConfig.brokerId)
       warn("Replica %d for partition %s reset its fetch offset from %d to current leader %d's start offset %d"
@@ -194,6 +197,7 @@ class ReplicaFetcherThread(name: String,
 
   protected def fetch(fetchRequest: FetchRequest): Map[TopicAndPartition, PartitionData] = {
     val clientResponse = sendRequest(ApiKeys.FETCH, Some(fetchRequestVersion), fetchRequest.underlying)
+
     new FetchResponse(clientResponse.responseBody).responseData.asScala.map { case (key, value) =>
       TopicAndPartition(key.topic, key.partition) -> new PartitionData(value)
     }
@@ -253,6 +257,7 @@ object ReplicaFetcherThread {
 
   private[server] class FetchRequest(val underlying: JFetchRequest) extends AbstractFetcherThread.FetchRequest {
     def isEmpty: Boolean = underlying.fetchData.isEmpty
+
     def offset(topicAndPartition: TopicAndPartition): Long =
       underlying.fetchData.asScala(new TopicPartition(topicAndPartition.topic, topicAndPartition.partition)).offset
   }

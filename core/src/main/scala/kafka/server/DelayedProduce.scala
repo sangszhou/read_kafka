@@ -1,19 +1,19 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+  * contributor license agreements.  See the NOTICE file distributed with
+  * this work for additional information regarding copyright ownership.
+  * The ASF licenses this file to You under the Apache License, Version 2.0
+  * (the "License"); you may not use this file except in compliance with
+  * the License.  You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 
 package kafka.server
 
@@ -37,8 +37,8 @@ case class ProducePartitionStatus(requiredOffset: Long, responseStatus: Producer
 }
 
 /**
- * The produce metadata maintained by the delayed produce operation
- */
+  * The produce metadata maintained by the delayed produce operation
+  */
 case class ProduceMetadata(produceRequiredAcks: Short,
                            produceStatus: Map[TopicAndPartition, ProducePartitionStatus]) {
 
@@ -47,9 +47,9 @@ case class ProduceMetadata(produceRequiredAcks: Short,
 }
 
 /**
- * A delayed produce operation that can be created by the replica manager and watched
- * in the produce operation purgatory
- */
+  * A delayed produce operation that can be created by the replica manager and watched
+  * in the produce operation purgatory
+  */
 class DelayedProduce(delayMs: Long,
                      produceMetadata: ProduceMetadata,
                      replicaManager: ReplicaManager,
@@ -66,19 +66,18 @@ class DelayedProduce(delayMs: Long,
       status.acksPending = false
     }
 
-    trace("Initial partition status for %s is %s".format(topicAndPartition, status))
   }
 
   /**
-   * The delayed produce operation can be completed if every partition
-   * it produces to is satisfied by one of the following:
-   *
-   * Case A: This broker is no longer the leader: set an error in response
-   * Case B: This broker is the leader:
-   *   B.1 - If there was a local error thrown while checking if at least requiredAcks
-   *         replicas have caught up to this operation: set an error in response
-   *   B.2 - Otherwise, set the response with no error.
-   */
+    * The delayed produce operation can be completed if every partition
+    * it produces to is satisfied by one of the following:
+    *
+    * Case A: This broker is no longer the leader: set an error in response
+    * Case B: This broker is the leader:
+    *   B.1 - If there was a local error thrown while checking if at least requiredAcks
+    * replicas have caught up to this operation: set an error in response
+    *   B.2 - Otherwise, set the response with no error.
+    */
   override def tryComplete(): Boolean = {
     // check for each partition if it still has pending acks
     produceMetadata.produceStatus.foreach { case (topicAndPartition, status) =>
@@ -87,6 +86,7 @@ class DelayedProduce(delayMs: Long,
       // skip those partitions that have already been satisfied
       if (status.acksPending) {
         val partitionOpt = replicaManager.getPartition(topicAndPartition.topic, topicAndPartition.partition)
+
         val (hasEnough, errorCode) = partitionOpt match {
           case Some(partition) =>
             partition.checkEnoughReplicasReachOffset(status.requiredOffset)
@@ -94,6 +94,7 @@ class DelayedProduce(delayMs: Long,
             // Case A
             (false, ErrorMapping.UnknownTopicOrPartitionCode)
         }
+
         if (errorCode != ErrorMapping.NoError) {
           // Case B.1
           status.acksPending = false
@@ -107,7 +108,7 @@ class DelayedProduce(delayMs: Long,
     }
 
     // check if each partition has satisfied at lease one of case A and case B
-    if (! produceMetadata.produceStatus.values.exists(p => p.acksPending))
+    if (!produceMetadata.produceStatus.values.exists(p => p.acksPending))
       forceComplete()
     else
       false
@@ -122,8 +123,8 @@ class DelayedProduce(delayMs: Long,
   }
 
   /**
-   * Upon completion, return the current response status along with the error code per partition
-   */
+    * Upon completion, return the current response status along with the error code per partition
+    */
   override def onComplete() {
     val responseStatus = produceMetadata.produceStatus.mapValues(status => status.responseStatus)
     responseCallback(responseStatus)
@@ -136,9 +137,9 @@ object DelayedProduceMetrics extends KafkaMetricsGroup {
 
   private val partitionExpirationMeterFactory = (key: TopicAndPartition) =>
     newMeter("ExpiresPerSec",
-             "requests",
-             TimeUnit.SECONDS,
-             tags = Map("topic" -> key.topic, "partition" -> key.partition.toString))
+      "requests",
+      TimeUnit.SECONDS,
+      tags = Map("topic" -> key.topic, "partition" -> key.partition.toString))
   private val partitionExpirationMeters = new Pool[TopicAndPartition, Meter](valueFactory = Some(partitionExpirationMeterFactory))
 
   def recordExpiration(partition: TopicAndPartition) {

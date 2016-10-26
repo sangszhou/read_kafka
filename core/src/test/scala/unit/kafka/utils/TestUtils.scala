@@ -97,6 +97,8 @@ object TestUtils extends Logging {
     val parentFile = new File(parent)
     parentFile.mkdirs()
     val f = Files.createTempDirectory(parentFile.toPath, "kafka-").toFile
+
+    // cool
     f.deleteOnExit()
 
     Runtime.getRuntime().addShutdownHook(new Thread() {

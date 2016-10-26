@@ -1,19 +1,19 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+  * contributor license agreements.  See the NOTICE file distributed with
+  * this work for additional information regarding copyright ownership.
+  * The ASF licenses this file to You under the Apache License, Version 2.0
+  * (the "License"); you may not use this file except in compliance with
+  * the License.  You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 package kafka.utils.timer
 
 import java.util.concurrent.{TimeUnit, Delayed}
@@ -47,7 +47,7 @@ private[timer] class TimerTaskList(taskCounter: AtomicInteger) extends Delayed {
   }
 
   // Apply the supplied function to each of tasks in this list
-  def foreach(f: (TimerTask)=>Unit): Unit = {
+  def foreach(f: (TimerTask) => Unit): Unit = {
     synchronized {
       var entry = root.next
       while (entry ne root) {
@@ -88,6 +88,7 @@ private[timer] class TimerTaskList(taskCounter: AtomicInteger) extends Delayed {
   }
 
   // Remove the specified timer task entry from this list
+  // 删除的是一个节点,而不是节点包含的值, 这样可以在 o(1) 时间内删除
   def remove(timerTaskEntry: TimerTaskEntry): Unit = {
     synchronized {
       timerTaskEntry.synchronized {
@@ -104,7 +105,7 @@ private[timer] class TimerTaskList(taskCounter: AtomicInteger) extends Delayed {
   }
 
   // Remove all task entries and apply the supplied function to each of them
-  def flush(f: (TimerTaskEntry)=>Unit): Unit = {
+  def flush(f: (TimerTaskEntry) => Unit): Unit = {
     synchronized {
       var head = root.next
       while (head ne root) {
@@ -124,8 +125,8 @@ private[timer] class TimerTaskList(taskCounter: AtomicInteger) extends Delayed {
 
     val other = d.asInstanceOf[TimerTaskList]
 
-    if(getExpiration < other.getExpiration) -1
-    else if(getExpiration > other.getExpiration) 1
+    if (getExpiration < other.getExpiration) -1
+    else if (getExpiration > other.getExpiration) 1
     else 0
   }
 
@@ -151,6 +152,7 @@ private[timer] class TimerTaskEntry(val timerTask: TimerTask) {
     // If remove is called when another thread is moving the entry from a task entry list to another,
     // this may fail to remove the entry due to the change of value of list. Thus, we retry until the list becomes null.
     // In a rare case, this thread sees null and exits the loop, but the other thread insert the entry to another list later.
+    // 删除成功的话, currentList 会变成 null
     while (currentList != null) {
       currentList.remove(this)
       currentList = list

@@ -258,6 +258,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
 
             Map<String, String> metricTags = new LinkedHashMap<String, String>();
             metricTags.put("client-id", clientId);
+
+            // 聚集数据结构?
             this.accumulator = new RecordAccumulator(config.getInt(ProducerConfig.BATCH_SIZE_CONFIG),
                     this.totalMemorySize,
                     this.compressionType,
@@ -266,9 +268,12 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                     metrics,
                     time,
                     metricTags);
+
             List<InetSocketAddress> addresses = ClientUtils.parseAndValidateAddresses(config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG));
             this.metadata.update(Cluster.bootstrap(addresses), time.milliseconds());
+
             ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config.values());
+
             NetworkClient client = new NetworkClient(
                     new Selector(config.getLong(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG), this.metrics, time, "producer", metricTags, channelBuilder),
                     this.metadata,
@@ -278,6 +283,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                     config.getInt(ProducerConfig.SEND_BUFFER_CONFIG),
                     config.getInt(ProducerConfig.RECEIVE_BUFFER_CONFIG),
                     this.requestTimeoutMs, time);
+
             this.sender = new Sender(client,
                     this.metadata,
                     this.accumulator,
@@ -288,6 +294,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                     new SystemTime(),
                     clientId,
                     this.requestTimeoutMs);
+
             String ioThreadName = "kafka-producer-network-thread" + (clientId.length() > 0 ? " | " + clientId : "");
             this.ioThread = new KafkaThread(ioThreadName, this.sender, true);
             this.ioThread.start();
@@ -410,8 +417,11 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         try {
             // first make sure the metadata for the topic is available
             long waitedOnMetadataMs = waitOnMetadata(record.topic(), this.maxBlockTimeMs);
+
             long remainingWaitMs = Math.max(0, this.maxBlockTimeMs - waitedOnMetadataMs);
+
             byte[] serializedKey;
+
             try {
                 serializedKey = keySerializer.serialize(record.topic(), record.key());
             } catch (ClassCastException cce) {
@@ -427,16 +437,24 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                         " to class " + producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG).getName() +
                         " specified in value.serializer");
             }
+
             int partition = partition(record, serializedKey, serializedValue, metadata.fetch());
+
             int serializedSize = Records.LOG_OVERHEAD + Record.recordSize(serializedKey, serializedValue);
+
             ensureValidRecordSize(serializedSize);
+
             TopicPartition tp = new TopicPartition(record.topic(), partition);
+
             log.trace("Sending record {} with callback {} to topic {} partition {}", record, callback, record.topic(), partition);
+
             RecordAccumulator.RecordAppendResult result = accumulator.append(tp, serializedKey, serializedValue, callback, remainingWaitMs);
+
             if (result.batchIsFull || result.newBatchCreated) {
                 log.trace("Waking up the sender since topic {} partition {} is either full or getting a new batch", record.topic(), partition);
                 this.sender.wakeup();
             }
+
             return result.future;
             // handling exceptions and record the errors;
             // for API exceptions return them in the future,

@@ -87,6 +87,7 @@ class Log(val dir: File,
 
   /* the actual segments of the log */
   private val segments: ConcurrentNavigableMap[java.lang.Long, LogSegment] = new ConcurrentSkipListMap[java.lang.Long, LogSegment]
+
   loadSegments()
   
   /* Calculate the offset of the next message */
@@ -98,30 +99,6 @@ class Log(val dir: File,
 
   val tags = Map("topic" -> topicAndPartition.topic, "partition" -> topicAndPartition.partition.toString)
 
-  newGauge("NumLogSegments",
-    new Gauge[Int] {
-      def value = numberOfSegments
-    },
-    tags)
-
-  newGauge("LogStartOffset",
-    new Gauge[Long] {
-      def value = logStartOffset
-    },
-    tags)
-
-  newGauge("LogEndOffset",
-    new Gauge[Long] {
-      def value = logEndOffset
-    },
-    tags)
-
-  newGauge("Size",
-    new Gauge[Long] {
-      def value = size
-    },
-    tags)
-
   /** The name of this log */
   def name  = dir.getName()
 
@@ -129,13 +106,13 @@ class Log(val dir: File,
   private def loadSegments() {
     // create the log directory if it doesn't exist
     dir.mkdirs()
+
     var swapFiles = Set[File]()
     
     // first do a pass through the files in the log directory and remove any temporary files 
     // and find any interrupted swap operations
     for(file <- dir.listFiles if file.isFile) {
-      if(!file.canRead)
-        throw new IOException("Could not read file " + file)
+      if(!file.canRead)  throw new IOException("Could not read file " + file)
       val filename = file.getName
       if(filename.endsWith(DeletedFileSuffix) || filename.endsWith(CleanedFileSuffix)) {
         // if the file ends in .deleted or .cleaned, delete it
@@ -145,6 +122,7 @@ class Log(val dir: File,
         // if a log, delete the .index file, complete the swap operation later
         // if an index just delete it, it will be rebuilt
         val baseName = new File(CoreUtils.replaceSuffix(file.getPath, SwapFileSuffix, ""))
+
         if(baseName.getPath.endsWith(IndexFileSuffix)) {
           file.delete()
         } else if(baseName.getPath.endsWith(LogFileSuffix)){

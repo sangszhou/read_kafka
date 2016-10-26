@@ -29,40 +29,13 @@ import org.apache.kafka.common.utils.Utils
 
 abstract class AbstractFetcherManager(protected val name: String, clientId: String, numFetchers: Int = 1)
   extends Logging with KafkaMetricsGroup {
+
   // map of (source broker_id, fetcher_id per source broker) => fetcher
   private val fetcherThreadMap = new mutable.HashMap[BrokerAndFetcherId, AbstractFetcherThread]
+
   private val mapLock = new Object
+
   this.logIdent = "[" + name + "] "
-
-  newGauge(
-    "MaxLag",
-    new Gauge[Long] {
-      // current max lag across all fetchers/topics/partitions
-      def value = fetcherThreadMap.foldLeft(0L)((curMaxAll, fetcherThreadMapEntry) => {
-        fetcherThreadMapEntry._2.fetcherLagStats.stats.foldLeft(0L)((curMaxThread, fetcherLagStatsEntry) => {
-          curMaxThread.max(fetcherLagStatsEntry._2.lag)
-        }).max(curMaxAll)
-      })
-    },
-    Map("clientId" -> clientId)
-  )
-
-  newGauge(
-  "MinFetchRate", {
-    new Gauge[Double] {
-      // current min fetch rate across all fetchers/topics/partitions
-      def value = {
-        val headRate: Double =
-          fetcherThreadMap.headOption.map(_._2.fetcherStats.requestRate.oneMinuteRate).getOrElse(0)
-
-        fetcherThreadMap.foldLeft(headRate)((curMinAll, fetcherThreadMapEntry) => {
-          fetcherThreadMapEntry._2.fetcherStats.requestRate.oneMinuteRate.min(curMinAll)
-        })
-      }
-    }
-  },
-  Map("clientId" -> clientId)
-  )
 
   private def getFetcherId(topic: String, partitionId: Int) : Int = {
     Utils.abs(31 * topic.hashCode() + partitionId) % numFetchers

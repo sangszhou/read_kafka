@@ -1,19 +1,19 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+  * contributor license agreements.  See the NOTICE file distributed with
+  * this work for additional information regarding copyright ownership.
+  * The ASF licenses this file to You under the Apache License, Version 2.0
+  * (the "License"); you may not use this file except in compliance with
+  * the License.  You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 
 package kafka.server
 
@@ -35,8 +35,9 @@ import java.util.concurrent.atomic.AtomicLong
 import com.yammer.metrics.core.Gauge
 
 /**
- *  Abstract class for fetching data from multiple partitions from the same broker.
- */
+  * Abstract class for fetching data from multiple partitions from the same broker.
+  * consumer 看样也是一个 broker 对应一个 fetcher 线程, 为了高效吧
+  */
 abstract class AbstractFetcherThread(name: String,
                                      clientId: String,
                                      sourceBroker: BrokerEndPoint,
@@ -47,7 +48,10 @@ abstract class AbstractFetcherThread(name: String,
   type REQ <: FetchRequest
   type PD <: PartitionData
 
+  // 不是应该一个 PartitionFetchState 对应于一个 Thread 么
+
   private val partitionMap = new mutable.HashMap[TopicAndPartition, PartitionFetchState] // a (topic, partition) -> partitionFetchState map
+
   private val partitionMapLock = new ReentrantLock
   private val partitionMapCond = partitionMapLock.newCondition()
 
@@ -70,7 +74,7 @@ abstract class AbstractFetcherThread(name: String,
 
   protected def fetch(fetchRequest: REQ): Map[TopicAndPartition, PD]
 
-  override def shutdown(){
+  override def shutdown() {
     initiateShutdown()
     inLock(partitionMapLock) {
       partitionMapCond.signalAll()
@@ -111,7 +115,6 @@ abstract class AbstractFetcherThread(name: String,
           }
         }
     }
-    fetcherStats.requestRate.mark()
 
     if (responseData.nonEmpty) {
       // process fetched data
@@ -142,7 +145,7 @@ abstract class AbstractFetcherThread(name: String,
                       // 1. If there is a corrupt message in a topic partition, it does not bring the fetcher thread down and cause other topic partition to also lag
                       // 2. If the message is corrupt due to a transient state in the log (truncation, partial writes can cause this), we simply continue and
                       // should get fixed in the subsequent fetches
-                      logger.error("Found invalid messages during fetch for partition [" + topic + "," + partitionId + "] offset " + currentPartitionFetchState.offset  + " error " + ime.getMessage)
+                      logger.error("Found invalid messages during fetch for partition [" + topic + "," + partitionId + "] offset " + currentPartitionFetchState.offset + " error " + ime.getMessage)
                     case e: Throwable =>
                       throw new KafkaException("error processing data for partition [%s,%d] offset %d"
                         .format(topic, partitionId, currentPartitionFetchState.offset), e)
@@ -186,7 +189,8 @@ abstract class AbstractFetcherThread(name: String,
             topicAndPartition,
             if (PartitionTopicInfo.isOffsetInvalid(offset)) new PartitionFetchState(handleOffsetOutOfRange(topicAndPartition))
             else new PartitionFetchState(offset)
-          )}
+          )
+      }
       partitionMapCond.signalAll()
     } finally partitionMapLock.unlock()
   }
@@ -195,7 +199,7 @@ abstract class AbstractFetcherThread(name: String,
     partitionMapLock.lockInterruptibly()
     try {
       for (partition <- partitions) {
-        partitionMap.get(partition).foreach (currentPartitionFetchState =>
+        partitionMap.get(partition).foreach(currentPartitionFetchState =>
           if (currentPartitionFetchState.isActive)
             partitionMap.put(partition, new PartitionFetchState(currentPartitionFetchState.offset, new DelayedItem(delay)))
         )
@@ -222,13 +226,17 @@ object AbstractFetcherThread {
 
   trait FetchRequest {
     def isEmpty: Boolean
+
     def offset(topicAndPartition: TopicAndPartition): Long
   }
 
   trait PartitionData {
     def errorCode: Short
+
     def exception: Option[Throwable]
+
     def toByteBufferMessageSet: ByteBufferMessageSet
+
     def highWatermark: Long
   }
 
@@ -282,7 +290,9 @@ case class PartitionFetchState(offset: Long, delay: DelayedItem) {
 
   def this(offset: Long) = this(offset, new DelayedItem(0))
 
-  def isActive: Boolean = { delay.getDelay(TimeUnit.MILLISECONDS) == 0 }
+  def isActive: Boolean = {
+    delay.getDelay(TimeUnit.MILLISECONDS) == 0
+  }
 
   override def toString = "%d-%b".format(offset, isActive)
 }

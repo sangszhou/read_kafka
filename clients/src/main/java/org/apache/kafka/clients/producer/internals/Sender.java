@@ -190,17 +190,20 @@ public class Sender implements Runnable {
                                                                          now);
 
         List<RecordBatch> expiredBatches = this.accumulator.abortExpiredBatches(this.requestTimeout, cluster, now);
+
         // update sensors
         for (RecordBatch expiredBatch : expiredBatches)
             this.sensors.recordErrors(expiredBatch.topicPartition.topic(), expiredBatch.recordCount);
 
         sensors.updateProduceRequestMetrics(batches);
+
         List<ClientRequest> requests = createProduceRequests(batches, now);
         // If we have any nodes that are ready to send + have sendable data, poll with 0 timeout so this can immediately
         // loop and try sending more data. Otherwise, the timeout is determined by nodes that have partitions with data
         // that isn't yet sendable (e.g. lingering, backing off). Note that this specifically does not include nodes
         // with sendable data that aren't ready to send since they would cause busy looping.
         long pollTimeout = Math.min(result.nextReadyCheckDelayMs, notReadyTimeout);
+
         if (result.readyNodes.size() > 0) {
             log.trace("Nodes with data ready to send: {}", result.readyNodes);
             log.trace("Created {} produce requests: {}", requests.size(), requests);
@@ -248,6 +251,7 @@ public class Sender implements Runnable {
             log.trace("Received produce response from node {} with correlation id {}",
                       response.request().request().destination(),
                       correlationId);
+
             // if we have a response, parse it
             if (response.hasResponse()) {
                 ProduceResponse produceResponse = new ProduceResponse(response.responseBody());
@@ -257,11 +261,10 @@ public class Sender implements Runnable {
                     ProduceResponse.PartitionResponse partResp = entry.getValue();
                     Errors error = Errors.forCode(partResp.errorCode);
                     RecordBatch batch = batches.get(tp);
+
+                    // completeBatch 一般都做些什么事
                     completeBatch(batch, error, partResp.baseOffset, correlationId, now);
                 }
-                this.sensors.recordLatency(response.request().request().destination(), response.requestLatencyMs());
-                this.sensors.recordThrottleTime(response.request().request().destination(),
-                                                produceResponse.getThrottleTime());
             } else {
                 // this is the acks = 0 case, just complete all requests
                 for (RecordBatch batch : batches.values())
@@ -272,6 +275,7 @@ public class Sender implements Runnable {
 
     /**
      * Complete or retry the given batch of records.
+     * 主要是 retry
      * 
      * @param batch The record batch
      * @param error The error (or null if none)
@@ -324,13 +328,17 @@ public class Sender implements Runnable {
      */
     private ClientRequest produceRequest(long now, int destination, short acks, int timeout, List<RecordBatch> batches) {
         Map<TopicPartition, ByteBuffer> produceRecordsByPartition = new HashMap<TopicPartition, ByteBuffer>(batches.size());
+
         final Map<TopicPartition, RecordBatch> recordsByPartition = new HashMap<TopicPartition, RecordBatch>(batches.size());
+
         for (RecordBatch batch : batches) {
             TopicPartition tp = batch.topicPartition;
             produceRecordsByPartition.put(tp, batch.records.buffer());
             recordsByPartition.put(tp, batch);
         }
+
         ProduceRequest request = new ProduceRequest(acks, timeout, produceRecordsByPartition);
+
         RequestSend send = new RequestSend(Integer.toString(destination),
                                            this.client.nextRequestHeader(ApiKeys.PRODUCE),
                                            request.toStruct());

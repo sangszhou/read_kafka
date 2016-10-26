@@ -40,15 +40,22 @@ class Partition(val topic: String,
                 val partitionId: Int,
                 time: Time,
                 replicaManager: ReplicaManager) extends Logging with KafkaMetricsGroup {
+
   private val localBrokerId = replicaManager.config.brokerId
   private val logManager = replicaManager.logManager
   private val zkUtils = replicaManager.zkUtils
+
   private val assignedReplicaMap = new Pool[Int, Replica]
+
   // The read lock is only required when multiple reads are executed and needs to be in a consistent manner
   private val leaderIsrUpdateLock = new ReentrantReadWriteLock()
+
   private var zkVersion: Int = LeaderAndIsr.initialZKVersion
+
   @volatile private var leaderEpoch: Int = LeaderAndIsr.initialLeaderEpoch - 1
+
   @volatile var leaderReplicaIdOpt: Option[Int] = None
+
   @volatile var inSyncReplicas: Set[Replica] = Set.empty[Replica]
 
   /* Epoch of the controller that last changed the leader. This needs to be initialized correctly upon broker startup.
@@ -57,19 +64,13 @@ class Partition(val topic: String,
    * In addition to the leader, the controller can also send the epoch of the controller that elected the leader for
    * each partition. */
   private var controllerEpoch: Int = KafkaController.InitialControllerEpoch - 1
+
   this.logIdent = "Partition [%s,%d] on broker %d: ".format(topic, partitionId, localBrokerId)
 
   private def isReplicaLocal(replicaId: Int) : Boolean = (replicaId == localBrokerId)
+
   val tags = Map("topic" -> topic, "partition" -> partitionId.toString)
 
-  newGauge("UnderReplicated",
-    new Gauge[Int] {
-      def value = {
-        if (isUnderReplicated) 1 else 0
-      }
-    },
-    tags
-  )
 
   def isUnderReplicated(): Boolean = {
     leaderReplicaIfLocal() match {
@@ -88,9 +89,13 @@ class Partition(val topic: String,
         if (isReplicaLocal(replicaId)) {
           val config = LogConfig.fromProps(logManager.defaultConfig.originals,
                                            AdminUtils.fetchEntityConfig(zkUtils, ConfigType.Topic, topic))
+
           val log = logManager.createLog(TopicAndPartition(topic, partitionId), config)
+
           val checkpoint = replicaManager.highWatermarkCheckpoints(log.dir.getParentFile.getAbsolutePath)
+
           val offsetMap = checkpoint.read
+
           if (!offsetMap.contains(TopicAndPartition(topic, partitionId)))
             info("No checkpointed highwatermark is found for partition [%s,%d]".format(topic, partitionId))
           val offset = offsetMap.getOrElse(TopicAndPartition(topic, partitionId), 0L).min(log.logEndOffset)
@@ -305,22 +310,23 @@ class Partition(val topic: String,
       case Some(leaderReplica) =>
         // keep the current immutable replica list reference
         val curInSyncReplicas = inSyncReplicas
+
+        // 复制的结果
         val numAcks = curInSyncReplicas.count(r => {
           if (!r.isLocal)
             if (r.logEndOffset.messageOffset >= requiredOffset) {
               trace("Replica %d of %s-%d received offset %d".format(r.brokerId, topic, partitionId, requiredOffset))
               true
             }
-            else
-              false
-          else
-            true /* also count the local (leader) replica */
+            else false
+          else true /* also count the local (leader) replica */
         })
 
         trace("%d acks satisfied for %s-%d with acks = -1".format(numAcks, topic, partitionId))
 
         val minIsr = leaderReplica.log.get.config.minInSyncReplicas
 
+        // 为什么 hw 会大于 required offset 呢
         if (leaderReplica.highWatermark.messageOffset >= requiredOffset ) {
           /*
           * The topic may be configured not to accept messages if there are not enough replicas in ISR
@@ -334,6 +340,7 @@ class Partition(val topic: String,
         } else
           (false, ErrorMapping.NoError)
       case None =>
+        // 操作一定是在 leader 完成的
         (false, ErrorMapping.NotLeaderForPartitionCode)
     }
   }

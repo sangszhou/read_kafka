@@ -226,7 +226,7 @@ import java.util.regex.Pattern;
  * In this mode the consumer will just get the partitions it subscribes to and if the consumer instance fails no attempt
  * will be made to rebalance partitions to other instances.
  * <p>
- * There are several cases where this makes sense:
+ *
  * <ul>
  * <li>The first case is if the process is maintaining some kind of local state associated with that partition (like a
  * local on-disk key-value store) and hence it should only get records for the partition it is maintaining on disk.
@@ -279,6 +279,7 @@ import java.util.regex.Pattern;
  * <ul>
  * <li>Configure <code>enable.auto.commit=false</code>
  * <li>Use the offset provided with each {@link ConsumerRecord} to save your position.
+ * 重写 seek(TopicPartition, long)
  * <li>On restart restore the position of the consumer using {@link #seek(TopicPartition, long)}.
  * </ul>
  *
@@ -327,8 +328,8 @@ import java.util.regex.Pattern;
  * <p>
  * One of such cases is stream processing, where processor fetches from two topics and performs the join on these two streams.
  * When one of the topic is long lagging behind the other, the processor would like to pause fetching from the ahead topic
- * in order to get the lagging stream to catch up. Another example is bootstraping upon consumer starting up where there are
- * a lot of history data to catch up, the applciations usually wants to get the latest data on some of the topics before consider
+ * in order to get the lagging stream to catch up. Another example is bootstrapping upon consumer starting up where there are
+ * a lot of history data to catch up, the applications usually wants to get the latest data on some of the topics before consider
  * fetching other topics.
  *
  * <p>
@@ -452,6 +453,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
     // currentThread holds the threadId of the current thread accessing KafkaConsumer
     // and is used to prevent multi-threaded access
     private final AtomicLong currentThread = new AtomicLong(NO_CURRENT_THREAD);
+
     // refcount is used to allow reentrant access by the thread who has acquired currentThread
     private final AtomicInteger refcount = new AtomicInteger(0);
 
@@ -538,18 +540,25 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
             clientId = config.getString(ConsumerConfig.CLIENT_ID_CONFIG);
             if (clientId.length() <= 0)
                 clientId = "consumer-" + CONSUMER_CLIENT_ID_SEQUENCE.getAndIncrement();
+
             List<MetricsReporter> reporters = config.getConfiguredInstances(ConsumerConfig.METRIC_REPORTER_CLASSES_CONFIG,
                     MetricsReporter.class);
             reporters.add(new JmxReporter(JMX_PREFIX));
+
             this.metrics = new Metrics(metricConfig, reporters, time);
             this.retryBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG);
             this.metadata = new Metadata(retryBackoffMs, config.getLong(ConsumerConfig.METADATA_MAX_AGE_CONFIG));
+
             List<InetSocketAddress> addresses = ClientUtils.parseAndValidateAddresses(config.getList(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG));
+
             this.metadata.update(Cluster.bootstrap(addresses), 0);
             String metricGrpPrefix = "consumer";
+
             Map<String, String> metricsTags = new LinkedHashMap<String, String>();
             metricsTags.put("client-id", clientId);
+
             ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config.values());
+
             NetworkClient netClient = new NetworkClient(
                     new Selector(config.getLong(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG), metrics, time, metricGrpPrefix, metricsTags, channelBuilder),
                     this.metadata,
@@ -559,12 +568,14 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     config.getInt(ConsumerConfig.SEND_BUFFER_CONFIG),
                     config.getInt(ConsumerConfig.RECEIVE_BUFFER_CONFIG),
                     config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG), time);
+
             this.client = new ConsumerNetworkClient(netClient, metadata, time, retryBackoffMs);
             OffsetResetStrategy offsetResetStrategy = OffsetResetStrategy.valueOf(config.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG).toUpperCase());
             this.subscriptions = new SubscriptionState(offsetResetStrategy);
             List<PartitionAssignor> assignors = config.getConfiguredInstances(
                     ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
                     PartitionAssignor.class);
+
             this.coordinator = new ConsumerCoordinator(this.client,
                     config.getString(ConsumerConfig.GROUP_ID_CONFIG),
                     config.getInt(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG),
@@ -580,6 +591,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     new ConsumerCoordinator.DefaultOffsetCommitCallback(),
                     config.getBoolean(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG),
                     config.getLong(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG));
+
             if (keyDeserializer == null) {
                 this.keyDeserializer = config.getConfiguredInstance(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                         Deserializer.class);
@@ -596,6 +608,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                 config.ignore(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG);
                 this.valueDeserializer = valueDeserializer;
             }
+
             this.fetcher = new Fetcher<>(this.client,
                     config.getInt(ConsumerConfig.FETCH_MIN_BYTES_CONFIG),
                     config.getInt(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG),

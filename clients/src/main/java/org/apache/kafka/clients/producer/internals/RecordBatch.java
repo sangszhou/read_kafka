@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
  * A batch of records that is or will be sent.
  * 
  * This class is not thread safe and external synchronization must be used when modifying it
+ * 每次发送都是一个 RecordBatch?
  */
 public final class RecordBatch {
 
@@ -85,9 +86,8 @@ public final class RecordBatch {
      */
     public void done(long baseOffset, RuntimeException exception) {
         log.trace("Produced messages to topic-partition {} with base offset offset {} and error: {}.",
-                  topicPartition,
-                  baseOffset,
-                  exception);
+                  topicPartition, baseOffset, exception);
+
         // execute callbacks
         for (int i = 0; i < this.thunks.size(); i++) {
             try {

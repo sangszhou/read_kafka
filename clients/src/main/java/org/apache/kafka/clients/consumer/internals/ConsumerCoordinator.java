@@ -120,6 +120,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
     @Override
     public List<ProtocolMetadata> metadata() {
         List<ProtocolMetadata> metadataList = new ArrayList<>();
+
         for (PartitionAssignor assignor : assignors) {
             Subscription subscription = assignor.subscription(subscriptions.subscription());
             ByteBuffer metadata = ConsumerProtocol.serializeSubscription(subscription);
@@ -167,7 +168,9 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                                   String memberId,
                                   String assignmentStrategy,
                                   ByteBuffer assignmentBuffer) {
+
         PartitionAssignor assignor = lookupAssignor(assignmentStrategy);
+
         if (assignor == null)
             throw new IllegalStateException("Coordinator selected invalid assignment protocol: " + assignmentStrategy);
 
@@ -188,6 +191,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
         // execute the user's callback after rebalance
         ConsumerRebalanceListener listener = subscriptions.listener();
+
         log.debug("Setting newly assigned partitions {}", subscriptions.assignedPartitions());
         try {
             Set<TopicPartition> assigned = new HashSet<>(subscriptions.assignedPartitions());
@@ -269,13 +273,16 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      */
     public void refreshCommittedOffsetsIfNeeded() {
         if (subscriptions.refreshCommitsNeeded()) {
+
             Map<TopicPartition, OffsetAndMetadata> offsets = fetchCommittedOffsets(subscriptions.assignedPartitions());
+
             for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : offsets.entrySet()) {
                 TopicPartition tp = entry.getKey();
                 // verify assignment is still active
                 if (subscriptions.isAssigned(tp))
                     this.subscriptions.committed(tp, entry.getValue());
             }
+
             this.subscriptions.commitsRefreshed();
         }
     }
@@ -575,10 +582,10 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
      * @return A request future containing the committed offsets.
      */
     private RequestFuture<Map<TopicPartition, OffsetAndMetadata>> sendOffsetFetchRequest(Set<TopicPartition> partitions) {
-        if (coordinatorUnknown())
-            return RequestFuture.coordinatorNotAvailable();
+        if (coordinatorUnknown()) return RequestFuture.coordinatorNotAvailable();
 
         log.debug("Fetching committed offsets for partitions: {}",  partitions);
+
         // construct the request
         OffsetFetchRequest request = new OffsetFetchRequest(this.groupId, new ArrayList<TopicPartition>(partitions));
 

@@ -55,7 +55,9 @@ class LogManager(val logDirs: Array[File],
 
   createAndValidateLogDirs(logDirs)
   private val dirLocks = lockLogDirs(logDirs)
-  private val recoveryPointCheckpoints = logDirs.map(dir => (dir, new OffsetCheckpoint(new File(dir, RecoveryPointCheckpointFile)))).toMap
+  private val recoveryPointCheckpoints = logDirs.map(dir => (dir,
+    new OffsetCheckpoint(new File(dir, RecoveryPointCheckpointFile)))).toMap
+
   loadLogs()
 
   // public, so we can access this from kafka.admin.DeleteTopicTest
@@ -191,12 +193,14 @@ class LogManager(val logDirs: Array[File],
                          delay = InitialTaskDelayMs, 
                          period = retentionCheckMs, 
                          TimeUnit.MILLISECONDS)
+
       info("Starting log flusher with a default period of %d ms.".format(flushCheckMs))
       scheduler.schedule("kafka-log-flusher", 
                          flushDirtyLogs, 
                          delay = InitialTaskDelayMs, 
                          period = flushCheckMs, 
                          TimeUnit.MILLISECONDS)
+
       scheduler.schedule("kafka-recovery-point-checkpoint",
                          checkpointRecoveryPointOffsets,
                          delay = InitialTaskDelayMs,
@@ -322,6 +326,7 @@ class LogManager(val logDirs: Array[File],
    */
   private def checkpointLogsInDir(dir: File): Unit = {
     val recoveryPoints = this.logsByDir.get(dir.toString)
+
     if (recoveryPoints.isDefined) {
       this.recoveryPointCheckpoints(dir).write(recoveryPoints.get.mapValues(_.recoveryPoint))
     }
@@ -352,8 +357,11 @@ class LogManager(val logDirs: Array[File],
       
       // if not, create it
       val dataDir = nextLogDir()
+
       val dir = new File(dataDir, topicAndPartition.topic + "-" + topicAndPartition.partition)
+
       dir.mkdirs()
+
       log = new Log(dir, 
                     config,
                     recoveryPoint = 0L,
@@ -397,8 +405,7 @@ class LogManager(val logDirs: Array[File],
    * data directory with the fewest partitions.
    */
   private def nextLogDir(): File = {
-    if(logDirs.size == 1) {
-      logDirs(0)
+    if(logDirs.size == 1) { logDirs(0)
     } else {
       // count the number of logs in each parent directory (including 0 for empty directories
       val logCounts = allLogs.groupBy(_.dir.getParent).mapValues(_.size)

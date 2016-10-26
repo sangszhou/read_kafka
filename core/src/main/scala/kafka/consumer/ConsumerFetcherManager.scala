@@ -42,7 +42,9 @@ class ConsumerFetcherManager(private val consumerIdString: String,
                              private val zkUtils : ZkUtils)
         extends AbstractFetcherManager("ConsumerFetcherManager-%d".format(SystemTime.milliseconds),
                                        config.clientId, config.numConsumerFetchers) {
+
   private var partitionMap: immutable.Map[TopicAndPartition, PartitionTopicInfo] = null
+
   private var cluster: Cluster = null
   private val noLeaderPartitionSet = new mutable.HashSet[TopicAndPartition]
   private val lock = new ReentrantLock

@@ -28,6 +28,7 @@ import java.util.Set;
  * partition returned by a {@link Consumer#poll(long)} operation.
  */
 public class ConsumerRecords<K, V> implements Iterable<ConsumerRecord<K, V>> {
+
     public static final ConsumerRecords<Object, Object> EMPTY = new ConsumerRecords<>(Collections.EMPTY_MAP);
 
     private final Map<TopicPartition, List<ConsumerRecord<K, V>>> records;
@@ -56,10 +57,12 @@ public class ConsumerRecords<K, V> implements Iterable<ConsumerRecord<K, V>> {
         if (topic == null)
             throw new IllegalArgumentException("Topic must be non-null.");
         List<List<ConsumerRecord<K, V>>> recs = new ArrayList<>();
+
         for (Map.Entry<TopicPartition, List<ConsumerRecord<K, V>>> entry : records.entrySet()) {
             if (entry.getKey().topic().equals(topic))
                 recs.add(entry.getValue());
         }
+
         return new ConcatenatedIterable<>(recs);
     }
 

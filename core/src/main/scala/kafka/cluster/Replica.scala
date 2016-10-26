@@ -29,8 +29,10 @@ class Replica(val brokerId: Int,
               time: Time = SystemTime,
               initialHighWatermarkValue: Long = 0L,
               val log: Option[Log] = None) extends Logging {
+
   // the high watermark offset value, in non-leader replicas only its message offsets are kept
   @volatile private[this] var highWatermarkMetadata: LogOffsetMetadata = new LogOffsetMetadata(initialHighWatermarkValue)
+
   // the log end offset value, kept in all replicas;
   // for local replica it is the log's end offset, for remote replicas its value is only updated by follower fetch
   @volatile private[this] var logEndOffsetMetadata: LogOffsetMetadata = LogOffsetMetadata.UnknownOffsetMetadata

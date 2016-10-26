@@ -32,13 +32,19 @@ class LogManagerTest {
   val maxRollInterval = 100
   val maxLogAgeMs = 10*60*60*1000
   val logProps = new Properties()
+
   logProps.put(LogConfig.SegmentBytesProp, 1024: java.lang.Integer)
   logProps.put(LogConfig.SegmentIndexBytesProp, 4096: java.lang.Integer)
   logProps.put(LogConfig.RetentionMsProp, maxLogAgeMs: java.lang.Integer)
+
   val logConfig = LogConfig(logProps)
+
   var logDir: File = null
+
   var logManager: LogManager = null
+
   val name = "kafka"
+
   val veryLargeLogFlushInterval = 10000000L
 
   @Before

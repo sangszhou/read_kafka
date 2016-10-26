@@ -97,15 +97,21 @@ import java.util.concurrent.atomic.AtomicInteger
  * It is caller's responsibility to enforce it. Simultaneous add calls are thread-safe.
  */
 @nonthreadsafe
-private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, taskCounter: AtomicInteger, queue: DelayQueue[TimerTaskList]) {
+private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, taskCounter: AtomicInteger,
+                                 queue: DelayQueue[TimerTaskList]) {
 
-  private[this] val interval = tickMs * wheelSize
+  // 为什么 queue List 呢?
+
+  private[this] val interval = tickMs * wheelSize // 总时间么?
+
+  // 每个桶是一个双向链表
   private[this] val buckets = Array.tabulate[TimerTaskList](wheelSize) { _ => new TimerTaskList(taskCounter) }
 
   private[this] var currentTime = startMs - (startMs % tickMs) // rounding down to multiple of tickMs
 
   // overflowWheel can potentially be updated and read by two concurrent threads through add().
   // Therefore, it needs to be volatile due to the issue of Double-Checked Locking pattern with JVM
+  // 必须是两个么
   @volatile private[this] var overflowWheel: TimingWheel = null
 
   private[this] def addOverflowWheel(): Unit = {
@@ -128,7 +134,7 @@ private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, ta
     if (timerTaskEntry.cancelled) {
       // Cancelled
       false
-    } else if (expiration < currentTime + tickMs) {
+    } else if (expiration < currentTime + tickMs) { // why?
       // Already expired
       false
     } else if (expiration < currentTime + interval) {
@@ -139,6 +145,7 @@ private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, ta
 
       // Set the bucket expiration time
       if (bucket.setExpiration(virtualId * tickMs)) {
+
         // The bucket needs to be enqueued because it was an expired bucket
         // We only need to enqueue the bucket when its expiration time has changed, i.e. the wheel has advanced
         // and the previous buckets gets reused; further calls to set the expiration within the same wheel cycle
@@ -160,7 +167,8 @@ private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, ta
       currentTime = timeMs - (timeMs % tickMs)
 
       // Try to advance the clock of the overflow wheel if present
-      if (overflowWheel != null) overflowWheel.advanceClock(currentTime)
+      if (overflowWheel != null)
+        overflowWheel.advanceClock(currentTime)
     }
   }
 }

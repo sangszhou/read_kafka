@@ -45,13 +45,16 @@ import kafka.common.TopicAndPartition
 
 class ControllerContext(val zkUtils: ZkUtils,
                         val zkSessionTimeout: Int) {
+
   var controllerChannelManager: ControllerChannelManager = null
   val controllerLock: ReentrantLock = new ReentrantLock()
   var shuttingDownBrokerIds: mutable.Set[Int] = mutable.Set.empty
   val brokerShutdownLock: Object = new Object
   var epoch: Int = KafkaController.InitialControllerEpoch - 1
   var epochZkVersion: Int = KafkaController.InitialControllerEpochZkVersion - 1
+
   var allTopics: Set[String] = Set.empty
+
   var partitionReplicaAssignment: mutable.Map[TopicAndPartition, Seq[Int]] = mutable.Map.empty
   var partitionLeadershipInfo: mutable.Map[TopicAndPartition, LeaderIsrAndControllerEpoch] = mutable.Map.empty
   val partitionsBeingReassigned: mutable.Map[TopicAndPartition, ReassignedPartitionsContext] = new mutable.HashMap
